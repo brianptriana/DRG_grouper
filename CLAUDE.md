@@ -25,6 +25,10 @@ python cli.py --data-dir msdrgv43.0icd10_r0_definitionsmanual_text \
 
 ### Run tests
 ```bash
+# Comprehensive test suite with assertions (19 tests)
+python tests/test_grouper_comprehensive.py
+
+# Original demo tests (3 tests)
 python tests/test_grouper.py
 ```
 
@@ -46,6 +50,10 @@ drg_grouper/
 ├── data/
 │   └── models.py     # Data classes (Encounter, DRGResult, CCLevel, etc.)
 └── grouper.py        # Main grouping engine
+
+tests/
+├── test_grouper.py              # Basic demo tests (3 tests)
+└── test_grouper_comprehensive.py # Full test suite with assertions (19 tests)
 ```
 
 ### Grouping Algorithm Flow
@@ -65,6 +73,21 @@ The `msdrgv43.0icd10_r0_definitionsmanual_text/` directory should contain:
 - `appendix_B.txt` - Diagnosis codes to MDC/DRG mapping
 - `appendix_C.txt` - CC/MCC levels and exclusions
 - `mdcs_*.txt` - MDC logic with procedure codes and decision trees
+
+## Test Coverage
+
+The comprehensive test suite (`tests/test_grouper_comprehensive.py`) covers:
+- **Medical DRGs**: Cases with MCC, CC only, and no CC/MCC
+- **Surgical DRGs**: OR procedures, multiple procedures
+- **Pre-MDC**: Heart/liver transplants, ECMO
+- **PE cases**: Surgical-to-medical fallback, acute cor pulmonale handling
+- **Edge cases**: Invalid diagnoses, discharge status effects, CC/MCC priority
+
+## Important Notes
+
+- **Diagnosis codes require full specificity**: Use J9600, not J960
+- **E119 (Type 2 DM) is NOT a CC**: Only complication codes like E1100, E1152, E11641 are CC/MCC
+- **ECMO (5A1522F)** routes through Pre-MDC to DRG 003
 
 ## Known Limitations
 
