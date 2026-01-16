@@ -6,6 +6,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 MS-DRG Grouper - A Python implementation of the CMS MS-DRG (Medicare Severity Diagnosis Related Groups) v43.0 grouping logic. This tool assigns DRG codes to patient encounters based on diagnoses and procedures.
 
+**Repository**: https://github.com/brianptriana/DRG_grouper
+
+## Data Setup
+
+The CMS definition files are not included in the repository. Download from CMS:
+1. Visit: https://www.cms.gov/medicare/payment/prospective-payment-systems/acute-inpatient-pps/ms-drg-classifications-and-software
+2. Download "ICD-10 MS-DRG Definitions Manual Text Files"
+3. Extract to `msdrgv43.0icd10_r0_definitionsmanual_text/`
+
 ## Commands
 
 ### Run the grouper (single encounter)
@@ -30,12 +39,12 @@ python cli.py --data-dir msdrgv43.0icd10_r0_definitionsmanual_text \
 ```
 drg_grouper/
 ├── parser/           # Parsers for CMS definition files
-│   ├── appendix_a.py   # DRG list (number, MDC, type, description)
-│   ├── appendix_b.py   # Diagnosis → MDC/DRG mapping
-│   ├── appendix_c.py   # CC/MCC definitions and exclusions
-│   └── mdc_logic.py    # Procedure codes and decision trees
+│   ├── appendix_a.py   # DRG list (770 DRGs)
+│   ├── appendix_b.py   # Diagnosis → MDC/DRG mapping (67K codes)
+│   ├── appendix_c.py   # CC/MCC definitions (18K codes)
+│   └── mdc_logic.py    # Procedure codes and decision trees (62K codes)
 ├── data/
-│   └── models.py     # Data classes (Encounter, DRGResult, etc.)
+│   └── models.py     # Data classes (Encounter, DRGResult, CCLevel, etc.)
 └── grouper.py        # Main grouping engine
 ```
 
@@ -51,7 +60,7 @@ drg_grouper/
 
 ### Key Data Files
 
-The `msdrgv43.0icd10_r0_definitionsmanual_text/` directory contains:
+The `msdrgv43.0icd10_r0_definitionsmanual_text/` directory should contain:
 - `appendix_A.txt` - DRG definitions
 - `appendix_B.txt` - Diagnosis codes to MDC/DRG mapping
 - `appendix_C.txt` - CC/MCC levels and exclusions
