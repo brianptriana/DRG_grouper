@@ -223,6 +223,24 @@ class DRGGrouper:
             if proc_info and proc_info.drgs:
                 # Get the base DRG and find severity variant
                 base_drg = proc_info.drgs[0]
+                base_def = self.drg_definitions.get(base_drg)
+
+                if not base_def:
+                    continue
+
+                # Check if this DRG has severity variants by looking at description
+                # DRGs with variants have "with MCC", "with CC", "without CC/MCC" in name
+                base_desc = base_def.description.lower()
+                has_severity_variants = (
+                    'with mcc' in base_desc or
+                    'without mcc' in base_desc or
+                    'without cc' in base_desc
+                )
+
+                # If no severity variants in description, return base DRG as-is
+                if not has_severity_variants:
+                    return base_drg
+
                 drg_num = int(base_drg)
 
                 # Common pattern: DRGs come in triplets (MCC, CC, no CC)
@@ -233,21 +251,33 @@ class DRGGrouper:
                 elif has_cc:
                     # CC is usually +1
                     cc_drg = str(drg_num + 1).zfill(3)
-                    if cc_drg in self.drg_definitions:
+                    cc_def = self.drg_definitions.get(cc_drg)
+                    # Verify it's a CC variant (has "with CC" in description)
+                    if cc_def and 'with cc' in cc_def.description.lower():
                         return cc_drg
                     return base_drg
                 else:
                     # No CC/MCC is usually +2
                     no_cc_drg = str(drg_num + 2).zfill(3)
-                    if no_cc_drg in self.drg_definitions:
+                    no_cc_def = self.drg_definitions.get(no_cc_drg)
+                    # Verify it's a no-CC variant
+                    if no_cc_def and 'without cc' in no_cc_def.description.lower():
                         return no_cc_drg
-                    # Try +1 if +2 doesn't exist
+                    # Try +1 if +2 doesn't exist or isn't a variant
                     cc_drg = str(drg_num + 1).zfill(3)
-                    if cc_drg in self.drg_definitions:
+                    cc_def = self.drg_definitions.get(cc_drg)
+                    if cc_def and ('without' in cc_def.description.lower() or 'with cc' in cc_def.description.lower()):
                         return cc_drg
                     return base_drg
 
         return None
+
+    # Surgical DRGs that require procedures - map to medical alternatives
+    # Format: surgical_drg -> (mcc_drg, cc_drg, no_cc_drg) or (with_condition, without)
+    SURGICAL_TO_MEDICAL_FALLBACK = {
+        # DRG 173 (PE thrombolysis) -> DRGs 175/176 (PE medical)
+        "173": ("175", "175", "176"),  # 175 for MCC/acute cor pulmonale, 176 without
+    }
 
     def _assign_medical_drg(
         self,
@@ -261,9 +291,31 @@ class DRGGrouper:
         if not dx_info:
             return None
 
+        # Check for acute cor pulmonale in PE cases (counts as MCC equivalent)
+        is_acute_cor_pulmonale = pdx in [
+            "I2601", "I2602", "I2603", "I2604", "I2609"
+        ]
+
         # Find DRGs for this MDC
         for mapping_mdc, drgs in dx_info.mdc_drg_mappings:
             if mapping_mdc == mdc and drgs:
+                candidate_drg = drgs[0]
+
+                # Check if this is a surgical DRG that needs a procedure
+                drg_def = self.drg_definitions.get(candidate_drg)
+                if drg_def and drg_def.is_surgical:
+                    # Look for medical fallback
+                    fallback = self.SURGICAL_TO_MEDICAL_FALLBACK.get(candidate_drg)
+                    if fallback:
+                        if has_mcc or is_acute_cor_pulmonale:
+                            return fallback[0]
+                        elif has_cc:
+                            return fallback[1]
+                        else:
+                            return fallback[2]
+                    # No fallback defined - skip this surgical DRG
+                    continue
+
                 # Medical DRGs often come in pairs or triplets
                 if len(drgs) >= 3:
                     if has_mcc:
